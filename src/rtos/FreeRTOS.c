@@ -149,12 +149,40 @@ static const struct symbols freertos_symbol_list[] = {
 	{ NULL, false }
 };
 
+static int report_fallback_thread_info(struct rtos *rtos, int thread_list_size)
+{
+	/* Either : No RTOS threads - there is always at least the current execution though */
+	/* OR     : No current thread - all threads suspended - show the current execution
+	* of idling */
+
+	if (rtos->thread_details)
+		free(rtos->thread_details);
+
+	char tmp_str[] = "Current Execution";
+	rtos->thread_details = malloc(
+			sizeof(struct thread_detail) * thread_list_size);
+	if (!rtos->thread_details) {
+		LOG_ERROR("Error allocating memory for %d threads", thread_list_size);
+		return ERROR_FAIL;
+	}
+	rtos->thread_details->threadid = 1;
+	rtos->thread_details->exists = true;
+	rtos->thread_details->extra_info_str = NULL;
+	rtos->thread_details->thread_name_str = malloc(sizeof(tmp_str));
+	strcpy(rtos->thread_details->thread_name_str, tmp_str);
+
+	rtos->thread_count = thread_list_size;
+	rtos->current_thread = 1;
+	return ERROR_OK;
+}
+
+
 /* TODO: */
 /* this is not safe for little endian yet */
 /* may be problems reading if sizes are not 32 bit long integers. */
 /* test mallocs for failure */
 
-static int freertos_update_threads(struct rtos *rtos)
+static int FreeRTOS_do_update_threads(struct rtos *rtos)
 {
 	int retval;
 	unsigned int tasks_found = 0;
@@ -206,23 +234,12 @@ static int freertos_update_threads(struct rtos *rtos)
 										rtos->current_thread);
 
 	if ((thread_list_size  == 0) || (rtos->current_thread == 0)) {
-		/* Either : No RTOS threads - there is always at least the current execution though */
-		/* OR     : No current thread - all threads suspended - show the current execution
-		 * of idling */
-		char tmp_str[] = "Current Execution";
 		thread_list_size++;
 		tasks_found++;
-		rtos->thread_details = malloc(
-				sizeof(struct thread_detail) * thread_list_size);
-		if (!rtos->thread_details) {
-			LOG_ERROR("Error allocating memory for %d threads", thread_list_size);
-			return ERROR_FAIL;
-		}
-		rtos->thread_details->threadid = 1;
-		rtos->thread_details->exists = true;
-		rtos->thread_details->extra_info_str = NULL;
-		rtos->thread_details->thread_name_str = malloc(sizeof(tmp_str));
-		strcpy(rtos->thread_details->thread_name_str, tmp_str);
+
+		retval = report_fallback_thread_info(rtos, thread_list_size);
+		if (retval != ERROR_OK)
+			return retval;
 
 		if (thread_list_size == 1) {
 			rtos->thread_count = 1;
@@ -396,7 +413,16 @@ static int freertos_update_threads(struct rtos *rtos)
 	return 0;
 }
 
-static int freertos_get_thread_reg_list(struct rtos *rtos, int64_t thread_id,
+static int FreeRTOS_update_threads(struct rtos *rtos)
+{
+	int retval = FreeRTOS_do_update_threads(rtos);
+	if (retval == ERROR_OK)
+		return retval;
+
+	return report_fallback_thread_info(rtos, 1);
+}
+
+static int FreeRTOS_get_thread_reg_list(struct rtos *rtos, int64_t thread_id,
 		struct rtos_reg **reg_list, int *num_regs)
 {
 	int retval;
