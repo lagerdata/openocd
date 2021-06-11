@@ -131,6 +131,8 @@ static uint16_t direction;
 static uint16_t jtag_output_init;
 static uint16_t jtag_direction_init;
 
+static bool samd_cold_plug;
+
 static int ftdi_swd_switch_seq(enum swd_special_seq seq);
 
 static struct signal *find_signal_by_name(const char *name)
@@ -933,6 +935,12 @@ COMMAND_HANDLER(ftdi_handle_tdo_sample_edge_command)
 	return ERROR_OK;
 }
 
+COMMAND_HANDLER(ftdi_handle_samd_cold_plug_command)
+{
+	samd_cold_plug = true;
+	return ERROR_OK;
+}
+
 static const struct command_registration ftdi_subcommand_handlers[] = {
 	{
 		.name = "device_desc",
@@ -994,6 +1002,13 @@ static const struct command_registration ftdi_subcommand_handlers[] = {
 			"allow signalling speed increase)",
 		.usage = "(rising|falling)",
 	},
+	{
+		.name = "init_samd_cold_plug",
+		.handler = &ftdi_handle_samd_cold_plug_command,
+		.mode = COMMAND_CONFIG,
+		.help = "issue SAMD/R/L/C cold-plug sequence during init to attach a secured device",
+		.usage = "",
+	},
 	COMMAND_REGISTRATION_DONE
 };
 
@@ -1046,6 +1061,10 @@ static int ftdi_swd_init(void)
 
 	swd_cmd_queue_alloced = 10;
 	swd_cmd_queue = malloc(swd_cmd_queue_alloced * sizeof(*swd_cmd_queue));
+
+	if(samd_cold_plug){
+		LOG_INFO("SAMD reset cold-plug sequence issued, device is held in reset.");
+	}
 
 	return swd_cmd_queue ? ERROR_OK : ERROR_FAIL;
 }
