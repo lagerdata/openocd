@@ -1063,6 +1063,21 @@ static int ftdi_swd_init(void)
 	swd_cmd_queue = malloc(swd_cmd_queue_alloced * sizeof(*swd_cmd_queue));
 
 	if(samd_cold_plug){
+		/*set tck and srst to 0*/
+		data = false;
+		oe = true;
+		/*0x0010 => srst, 0x0001 => tck*/
+		output = data ? output | 0x0010 | 0x0001 : output & ~0x0010 & ~0x0001;
+		direction = oe ? direction | 0x0010 | 0x0001 : direction & ~0x0010 & ~0x0001;
+		mpsse_set_data_bits_low_byte(mpsse_ctx, output & 0xff, direction & 0xff);
+		/*delay ~100ms */
+		volatile int i =0;
+		for(i=0;i++;i<10000);
+		/*set srst to 1*/
+		data = true;
+		output = data ? output | 0x0010 : output & ~0x0010;
+		direction = oe ? direction | 0x0010 : direction & ~0x0010;
+		mpsse_set_data_bits_low_byte(mpsse_ctx, output & 0xff, direction & 0xff);
 		LOG_INFO("SAMD reset cold-plug sequence issued, device is held in reset.");
 	}
 
