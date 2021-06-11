@@ -1074,7 +1074,7 @@ static int ftdi_swd_init(void)
 		direction = oe ? direction | 0x0010 | 0x0001 : direction & ~0x0010 & ~0x0001;
 		mpsse_set_data_bits_low_byte(mpsse_ctx, output & 0xff, direction & 0xff);
 		/*delay ~100ms */
-		jtag_sleep(100000);
+		jtag_sleep(1000000);
 		/*set srst to 1*/
 		data = true;
 		output = data ? output | 0x0010 : output & ~0x0010;
