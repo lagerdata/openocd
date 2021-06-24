@@ -1425,7 +1425,7 @@ static int dap_lpc55sx_start_debug_session(struct adiv5_dap *dap)
 	if (ap_id != 0x002A0000)
 	{
 		LOG_ERROR("Unexpected DM-AP ID: %08x\r\n", ap_id);
-		return E_FAIL;
+		return ERROR_FAIL;
 	}
 
 	retval = dap_queue_ap_write(ap, DM_AP_CSW, 0x21);	//RESYNC_REQ + CHIP_RESET_REQ
@@ -1450,7 +1450,7 @@ static int dap_lpc55sx_start_debug_session(struct adiv5_dap *dap)
 			return retval;
 
 		if ((timeval_ms() - start) > 1000)
-			return ERROR_TIMEOUT;
+			return ERROR_TIMEOUT_REACHED;
 	}
 	retval = dap_queue_ap_write(ap, DM_AP_REQUEST, 7);	//START_DBG_SESSION
 	if(retval != ERROR_OK)
@@ -1471,7 +1471,7 @@ static int dap_lpc55sx_start_debug_session(struct adiv5_dap *dap)
 			return retval;
 
 		if ((timeval_ms() - start) > 1000)
-			return ERROR_TIMEOUT;
+			return ERROR_TIMEOUT_REACHED;
 	}
 
 	dap_invalidate_cache(dap);
