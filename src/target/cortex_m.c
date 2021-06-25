@@ -1520,7 +1520,7 @@ static int cortex_m_reset_lpc55sx(struct target *target)
 		uint32_t entryPoint = 0;
 
 		retval = target_read_memory(target, 0 + 4, 4, 1, (uint8_t *)&entryPoint);
-		if (retval == ERROR_OK && entryPoint != 0 && entryPoint != -1)
+		if (retval == ERROR_OK && entryPoint != 0 && entryPoint != 0xFFFFFFFF)
 		{
 			retval = breakpoint_add(target, entryPoint, 2, BKPT_HARD);
 			if (retval == ERROR_OK)
