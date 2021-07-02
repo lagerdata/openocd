@@ -212,6 +212,7 @@ struct target {
 	struct gdb_fileio_info *fileio_info;
 
 	char *gdb_port_override;			/* target-specific override for gdb_port */
+	int gdb_sign_extends_addresses;
 
 	int gdb_max_connections;			/* max number of simultaneous gdb connections */
 
