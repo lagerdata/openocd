@@ -145,7 +145,7 @@ static inline bool pic32mm_is_boot_bank(struct flash_bank *bank)
 
 static const char *pic32mm_find_device(struct target *target, bool log);
 
-static uint32_t min(uint32_t a, uint32_t b) {
+static uint32_t my_min(uint32_t a, uint32_t b) {
 	return a < b ? a : b;
 }
 
@@ -273,7 +273,6 @@ static void pic32mm_recompute_sector_protection(struct flash_bank *bank);
 static int pic32mm_protect_check(struct flash_bank *bank)
 {
 	struct target *target = bank->target;
-	struct pic32mm_flash_bank *pic32mm_info = bank->driver_priv;
 
 	if (target->state != TARGET_HALTED) {
 		LOG_ERROR("Target not halted");
@@ -627,7 +626,7 @@ static int pic32mm_write_using_loader(struct flash_bank *bank, const uint8_t *bu
 		if (offset_in_row)
 			memset(multi_row_buffer, 0xFF, offset_in_row);
 		
-		uint32_t loadable_bytes = min(count, buffer_size - offset_in_row);	//Number of bytes from the source buffer that could fit into the row buffer
+		uint32_t loadable_bytes = my_min(count, buffer_size - offset_in_row);	//Number of bytes from the source buffer that could fit into the row buffer
 		uint32_t programmable_bytes = loadable_bytes + offset_in_row;		//Number of bytes that should be programmed, including pre-padding. Never exceeds buffer_size.
 		memcpy(multi_row_buffer + offset_in_row, buffer, loadable_bytes);
 		
@@ -732,7 +731,7 @@ static int pic32mm_write(struct flash_bank *bank, const uint8_t *buffer, uint32_
 		if (offset_in_row)
 			memset(pair.bytes, 0xFF, offset_in_row);
 		
-		uint32_t loadable_bytes = min(count, sizeof(pair) - offset_in_row);	//Number of bytes from the source buffer that could fit into the row buffer
+		uint32_t loadable_bytes = my_min(count, sizeof(pair) - offset_in_row);	//Number of bytes from the source buffer that could fit into the row buffer
 		uint32_t programmable_bytes = loadable_bytes + offset_in_row;		//Number of bytes that should be programmed, including pre-padding. Never exceeds buffer_size.
 		memcpy(pair.bytes + offset_in_row, buffer, loadable_bytes);
 		
@@ -760,7 +759,7 @@ static int pic32mm_write(struct flash_bank *bank, const uint8_t *buffer, uint32_
 			return ERROR_FAIL;
 		}
 		
-		int retval = pic32mm_write_dword(bank, bank->base + row_offset, pair.u32[0], pair.u32[1]);
+		retval = pic32mm_write_dword(bank, bank->base + row_offset, pair.u32[0], pair.u32[1]);
 		if (retval != ERROR_OK)
 			return retval;
 
@@ -780,7 +779,6 @@ static const char *pic32mm_find_device(struct target *target, bool log)
 	//See Table 18-2 of DS60001364D
 	uint32_t devID = (unsigned)((ejtag_info->idcode >> 12) & 0xffff);
 	uint32_t manufacturingID = (unsigned)((ejtag_info->idcode >> 1) & 0x7ff);
-	int retval;
 	
 	if (log)
 	{
@@ -796,7 +794,7 @@ static const char *pic32mm_find_device(struct target *target, bool log)
 		return NULL;
 	}
 	
-	for (int i = 0; i < (sizeof(pic32mm_devs) / sizeof(pic32mm_devs[0])); i++) {
+	for (size_t i = 0; i < (sizeof(pic32mm_devs) / sizeof(pic32mm_devs[0])); i++) {
 		if (pic32mm_devs[i].devid == devID) {
 			return pic32mm_devs[i].name;
 		}
@@ -845,7 +843,6 @@ static int pic32mm_probe(struct flash_bank *bank)
 	struct mips_ejtag *ejtag_info = &mips32->ejtag_info;
 	
 	//See Table 18-2 of DS60001364D
-	uint32_t devID = (unsigned)((ejtag_info->idcode >> 12) & 0xffff);
 	uint32_t manufacturingID = (unsigned)((ejtag_info->idcode >> 1) & 0x7ff);
 	int retval;
 	
@@ -888,17 +885,18 @@ static int pic32mm_auto_probe(struct flash_bank *bank)
 	return pic32mm_probe(bank);
 }
 
-static int pic32mm_info(struct flash_bank *bank, struct command_invocation *cmd)
+static int pic32mm_info(struct flash_bank *bank, char *buf, int buf_size)
 {
 	struct target *target = bank->target;
 	struct mips32_common *mips32 = target->arch_info;
 	struct mips_ejtag *ejtag_info = &mips32->ejtag_info;
 	uint32_t device_id;
+	int printed = 0;
 
 	device_id = ejtag_info->idcode;
 
 	if (((device_id >> 1) & 0x7ff) != PIC32_MANUF_ID) {
-		command_print_sameline(cmd,
+		printed = snprintf(buf, buf_size,
 			"Cannot identify target as a PIC32MM family (manufacturer 0x%03x != 0x%03x)\n",
 			(unsigned)((device_id >> 1) & 0x7ff),
 			PIC32_MANUF_ID);
@@ -908,17 +906,30 @@ static int pic32mm_info(struct flash_bank *bank, struct command_invocation *cmd)
 	int i;
 	for (i = 0; pic32mm_devs[i].name != NULL; i++) {
 		if (pic32mm_devs[i].devid == (device_id & 0x0fffffff)) {
-			command_print_sameline(cmd, "PIC32MM%s", pic32mm_devs[i].name);
+			printed = snprintf(buf, buf_size, "PIC32MM%s", pic32mm_devs[i].name);
 			break;
 		}
 	}
+	buf_size -= printed;
+	printed = 0;
+	if (0 > buf_size)
+		return ERROR_BUF_TOO_SMALL;
 
 	if (pic32mm_devs[i].name == NULL)
-		command_print_sameline(cmd, "Unknown");
+		printed = snprintf(buf, buf_size, "Unknown");
 
-	command_print_sameline(cmd,
+	buf_size -= printed;
+	printed = 0;
+	if (0 > buf_size)
+		return ERROR_BUF_TOO_SMALL;
+
+	printed = snprintf(buf, buf_size,
 		" Ver: 0x%02x",
 		(unsigned)((device_id >> 28) & 0xf));
+
+	buf_size -= printed;
+	if (0 > buf_size)
+		return ERROR_BUF_TOO_SMALL;
 
 	return ERROR_OK;
 }
