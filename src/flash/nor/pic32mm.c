@@ -842,8 +842,6 @@ static int pic32mm_probe(struct flash_bank *bank)
 	struct mips32_common *mips32 = target->arch_info;
 	struct mips_ejtag *ejtag_info = &mips32->ejtag_info;
 	
-	//See Table 18-2 of DS60001364D
-	uint32_t manufacturingID = (unsigned)((ejtag_info->idcode >> 1) & 0x7ff);
 	int retval;
 	
 	pic32mm_info->probed = false;
@@ -955,7 +953,7 @@ COMMAND_HANDLER(pic32mm_handle_pgm_word_command)
 {
 	uint32_t address;
 	uint64_t value;
-	int status, res;
+	int res;
 
 	if (CMD_ARGC != 3)
 		return ERROR_COMMAND_SYNTAX_ERROR;
@@ -991,7 +989,7 @@ COMMAND_HANDLER(pic32mm_handle_pgm_word_command)
 	res = pic32mm_write_dword(pic32mm_bank, address, (uint32_t)value, (uint32_t)(value >> 32));
 
 	if (res != ERROR_OK)
-		command_print(CMD, "pic32mm pgm word failed (status = 0x%x)", status);
+		command_print(CMD, "pic32mm pgm word failed (status = 0x%x)", res);
 	else
 	{
 		pic32mm_invalidate_flash_line_buffer(bank);
