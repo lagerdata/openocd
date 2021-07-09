@@ -145,6 +145,10 @@ static inline bool pic32mm_is_boot_bank(struct flash_bank *bank)
 
 static const char *pic32mm_find_device(struct target *target, bool log);
 
+static uint32_t min(uint32_t a, uint32_t b) {
+	return a < b ? a : b;
+}
+
 static int pic32mm_compute_device_layout(struct target *target, struct pic32mm_device_layout *layout, bool log)
 {
 	const char *pDeviceName = pic32mm_find_device(target, log);
