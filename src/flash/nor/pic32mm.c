@@ -839,7 +839,6 @@ static int pic32mm_probe(struct flash_bank *bank)
 {
 	struct target *target = bank->target;
 	struct pic32mm_flash_bank *pic32mm_info = bank->driver_priv;
-	struct mips32_common *mips32 = target->arch_info;
 	
 	int retval;
 	
