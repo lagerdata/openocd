@@ -762,7 +762,7 @@ int mips32_checksum_memory(struct target *target, target_addr_t address,
 	struct mips_ejtag *ejtag_info = &mips32->ejtag_info;
 	
 	if (mips32->isa_imp == MMIPS32_ONLY)
-		return E_FAIL;	//The code below uses the regular MIPS32 instruction set and won't work on MicroMIPS-only devices
+		return ERROR_FAIL;	//The code below uses the regular MIPS32 instruction set and won't work on MicroMIPS-only devices
 
 	/* see contrib/loaders/checksum/mips32.s for src */
 	uint32_t isa = ejtag_info->isa ? 1 : 0;
