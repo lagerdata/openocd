@@ -413,7 +413,7 @@ static int FreeRTOS_do_update_threads(struct rtos *rtos)
 	return 0;
 }
 
-static int FreeRTOS_update_threads(struct rtos *rtos)
+static int freertos_update_threads(struct rtos *rtos)
 {
 	int retval = FreeRTOS_do_update_threads(rtos);
 	if (retval == ERROR_OK)
@@ -422,7 +422,7 @@ static int FreeRTOS_update_threads(struct rtos *rtos)
 	return report_fallback_thread_info(rtos, 1);
 }
 
-static int FreeRTOS_get_thread_reg_list(struct rtos *rtos, int64_t thread_id,
+static int freertos_get_thread_reg_list(struct rtos *rtos, int64_t thread_id,
 		struct rtos_reg **reg_list, int *num_regs)
 {
 	int retval;
