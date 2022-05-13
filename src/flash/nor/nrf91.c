@@ -274,8 +274,7 @@ static int nrf91_read_ficr_info(nrf91_chip_t *chip)
 	return ERROR_OK;
 }
 
-static int nrf91_info(struct flash_bank *bank, struct command_invocation *cmd)
-{
+static int nrf91_deviceinfo_internal(struct flash_bank *bank, char *buf, size_t buf_size) {
 	nrf91_chip_t *chip = bank->driver_priv;
 	int res = ERROR_OK;
 
@@ -283,17 +282,30 @@ static int nrf91_info(struct flash_bank *bank, struct command_invocation *cmd)
 		res = nrf91_read_ficr_info(chip);
 	}
 
-	LOG_INFO("nrf91_info buf_size %u", buf_size);
 	if (res == ERROR_OK) {
 		char variant[5];
 		memcpy(variant, &chip->ficr_info.variant, 4);
 		variant[4] = 0;
-		command_print_sameline(cmd, "nRF%X-%s, %uKB FLASH, %uKB RAM, DevId : 0x%016" PRIX64,
+		int print_res = snprintf(buf, buf_size, "nRF%X-%s, %uKB FLASH, %uKB RAM, DevId : 0x%016" PRIX64,
 			chip->ficr_info.part, variant,
 			chip->ficr_info.flash, chip->ficr_info.ram,
 			chip->ficr_info.id);
+		if (print_res <= 0 || (unsigned int)print_res >= buf_size) {
+			LOG_ERROR("BUG: buffer problem in %s", __func__);
+			return ERROR_FAIL;
+		}
 	}
 
+	return res;
+}
+
+static int nrf91_info(struct flash_bank *bank, struct command_invocation *cmd)
+{
+	char buf[80];
+	int res = nrf91_deviceinfo_internal(bank, buf, sizeof(buf));
+	if (res == ERROR_OK) {
+		command_print_sameline(cmd, "%s", buf);
+	}
 	return res;
 }
 
@@ -311,7 +323,7 @@ static int nrf91_probe(struct flash_bank *bank)
 
 	if (!chip->probed) {
 		char buf[80];
-		nrf91_info(bank, buf, sizeof(buf));
+		nrf91_deviceinfo_internal(bank, buf, sizeof(buf));
 		if (!chip->ficr_info_valid) {
 			LOG_INFO("Unknown device: %s", buf);
 		} else {
